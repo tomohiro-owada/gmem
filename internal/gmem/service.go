@@ -44,12 +44,6 @@ func (s *Service) Save(ctx context.Context, req SaveRequest) Response[SaveResult
 	if err != nil {
 		return Fail[SaveResult]("validation_failed", err.Error(), "current_workspace_path", nil)
 	}
-	if err := s.Repo.Ensure(ctx); err != nil {
-		return Fail[SaveResult]("git_failed", err.Error(), "", nil)
-	}
-	if err := s.Repo.PullRebase(ctx); err != nil {
-		return Fail[SaveResult]("git_pull_failed", err.Error(), "", gitDetails(err))
-	}
 	findings := s.Security.Check(req.Title, req.Content)
 	if len(findings) > 0 {
 		return Fail[SaveResult]("content_rejected_by_security_policy", "content rejected by security policy", "", map[string]any{"findings": findings})
@@ -64,6 +58,12 @@ func (s *Service) Save(ctx context.Context, req SaveRequest) Response[SaveResult
 	rel := filepath.Join("projects", projectID, name)
 	if req.DryRun {
 		return OK(SaveResult{ProjectID: projectID, Path: rel, DryRun: true, EmbeddingDim: len(embedding)})
+	}
+	if err := s.Repo.Ensure(ctx); err != nil {
+		return Fail[SaveResult]("git_failed", err.Error(), "", nil)
+	}
+	if err := s.Repo.PullRebase(ctx); err != nil {
+		return Fail[SaveResult]("git_pull_failed", err.Error(), "", gitDetails(err))
 	}
 	raw := RenderMemoryMarkdown(projectID, req.Title, req.Content, "mcp", now)
 	full := filepath.Join(s.Config.GitDir, rel)
