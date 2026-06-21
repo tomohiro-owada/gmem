@@ -1,0 +1,5 @@
+/git-mcp-memory
+/dist/
+/.tmp/
+*.sqlite
+*.db
