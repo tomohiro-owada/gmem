@@ -10,6 +10,7 @@ import (
 
 func DefaultConfig() Config {
 	base := defaultDataDir()
+	modelDir := filepath.Join(base, "models", "multilingual-e5-small")
 	return Config{
 		GitDir:                  filepath.Join(base, "repo"),
 		IndexPath:               filepath.Join(base, "index.sqlite"),
@@ -18,6 +19,9 @@ func DefaultConfig() Config {
 		EmbeddingModelRepo:      "intfloat/multilingual-e5-small",
 		EmbeddingModelRevision:  "main",
 		EmbeddingModelURL:       "https://huggingface.co/intfloat/multilingual-e5-small",
+		EmbeddingModelPath:      filepath.Join(modelDir, "model.onnx"),
+		EmbeddingTokenizerPath:  filepath.Join(modelDir, "tokenizer.json"),
+		ONNXRuntimePath:         filepath.Join(base, "onnxruntime", runtimeLibraryName()),
 		EmbeddingQueryPrefix:    "query: ",
 		EmbeddingDocumentPrefix: "passage: ",
 		Limits: Limits{
@@ -93,6 +97,15 @@ func (c *Config) applyDefaults() {
 	if c.EmbeddingModelURL == "" {
 		c.EmbeddingModelURL = def.EmbeddingModelURL
 	}
+	if c.EmbeddingModelPath == "" {
+		c.EmbeddingModelPath = def.EmbeddingModelPath
+	}
+	if c.EmbeddingTokenizerPath == "" {
+		c.EmbeddingTokenizerPath = def.EmbeddingTokenizerPath
+	}
+	if c.ONNXRuntimePath == "" {
+		c.ONNXRuntimePath = def.ONNXRuntimePath
+	}
 	if c.EmbeddingQueryPrefix == "" {
 		c.EmbeddingQueryPrefix = def.EmbeddingQueryPrefix
 	}
@@ -107,6 +120,17 @@ func (c *Config) applyDefaults() {
 	}
 	if c.Limits.HardMaxContentBytes == 0 {
 		c.Limits.HardMaxContentBytes = def.Limits.HardMaxContentBytes
+	}
+}
+
+func runtimeLibraryName() string {
+	switch runtime.GOOS {
+	case "windows":
+		return "onnxruntime.dll"
+	case "darwin":
+		return "libonnxruntime.dylib"
+	default:
+		return "libonnxruntime.so.1.26.0"
 	}
 }
 

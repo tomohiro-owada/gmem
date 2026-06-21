@@ -42,10 +42,15 @@ func run(args []string, stdin io.Reader, stdout io.Writer) error {
 	}
 }
 
-func newService() (*gmem.Service, func(), error) {
+func newService(ensureAssets bool) (*gmem.Service, func(), error) {
 	cfg, err := gmem.LoadConfig("")
 	if err != nil {
 		return nil, nil, err
+	}
+	if ensureAssets {
+		if err := gmem.EnsureAssets(context.Background(), cfg); err != nil {
+			return nil, nil, err
+		}
 	}
 	idx, err := gmem.OpenIndex(cfg.IndexPath)
 	if err != nil {
@@ -87,7 +92,7 @@ func runSave(args []string, stdin io.Reader, stdout io.Writer) error {
 		}
 		req = gmem.SaveRequest{CurrentWorkspacePath: workspace, Title: opts["title"], Content: body, DryRun: opts["dry-run"] == "true"}
 	}
-	svc, cleanup, err := newService()
+	svc, cleanup, err := newService(true)
 	if err != nil {
 		return err
 	}
@@ -120,7 +125,7 @@ func runSearch(args []string, stdin io.Reader, stdout io.Writer) error {
 			req.Fields = strings.Split(opts["fields"], ",")
 		}
 	}
-	svc, cleanup, err := newService()
+	svc, cleanup, err := newService(true)
 	if err != nil {
 		return err
 	}
@@ -133,7 +138,7 @@ func runRetryPush(args []string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
-	svc, cleanup, err := newService()
+	svc, cleanup, err := newService(false)
 	if err != nil {
 		return err
 	}
@@ -215,7 +220,8 @@ func callTool(raw json.RawMessage) any {
 	if err := json.Unmarshal(raw, &in); err != nil {
 		return toolText(gmem.Fail[any]("invalid_request", err.Error(), "", nil))
 	}
-	svc, cleanup, err := newService()
+	ensure := in.Name == "save_memory" || in.Name == "search_memory"
+	svc, cleanup, err := newService(ensure)
 	if err != nil {
 		return toolText(gmem.Fail[any]("server_error", err.Error(), "", nil))
 	}

@@ -6,13 +6,13 @@ import (
 	"testing"
 )
 
-func TestE5EmbedderRequiresModelPath(t *testing.T) {
+func TestE5EmbedderRequiresModelFile(t *testing.T) {
 	emb := &E5Embedder{Config: DefaultConfig()}
 	err := emb.Ready(context.Background())
 	if err == nil {
 		t.Fatal("expected readiness error")
 	}
-	if !strings.Contains(err.Error(), "embedding_model_path") {
+	if !strings.Contains(err.Error(), "model.onnx") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
