@@ -89,11 +89,28 @@ func (g GitRepo) Unpushed(ctx context.Context) ([]string, error) {
 	}
 	var commits []string
 	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
-		if strings.TrimSpace(line) != "" {
-			commits = append(commits, strings.Fields(line)[0])
+		fields := strings.Fields(line)
+		if len(fields) == 0 {
+			continue
+		}
+		if isHexCommitPrefix(fields[0]) {
+			commits = append(commits, fields[0])
 		}
 	}
 	return commits, nil
+}
+
+func isHexCommitPrefix(s string) bool {
+	if len(s) < 7 {
+		return false
+	}
+	for _, r := range s {
+		if (r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 func (g GitRepo) run(ctx context.Context, name string, args ...string) (string, error) {
