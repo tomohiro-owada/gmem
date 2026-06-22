@@ -368,6 +368,8 @@ English は [こちら](#git-mcp-memory)。
 
 ### git-mcp-memory
 
+![git-mcp-memory ヘッダー挿絵](docs/assets/header.svg)
+
 AI agent の長期記憶を Git 管理された Markdown として保存し、MCP と JSON-first な CLI から読み書きするためのローカルツールです。
 
 `git-mcp-memory` は、記憶の正本を Git リポジトリ内の Markdown に置き、SQLite とローカル embedding を再生成可能な検索インデックスとして使います。人間が読めること、Git の履歴で追えること、意味検索できることを同時に満たす設計です。
@@ -398,6 +400,8 @@ AI agent の長期記憶を Git 管理された Markdown として保存し、MC
 詳細な設計メモは [docs/design.md](docs/design.md) を参照してください。
 
 ## 構成
+
+![git-mcp-memory 構成図](docs/assets/architecture.svg)
 
 ```text
 AI client / CLI
