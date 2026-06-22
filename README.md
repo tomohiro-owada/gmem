@@ -2,6 +2,8 @@
 
 Git-backed long-term memory for AI agents, served through MCP and a JSON-first CLI.
 
+![git-mcp-memory header illustration](docs/assets/header.svg)
+
 `git-mcp-memory` stores the source of truth as Markdown files in a Git repository, while using SQLite and local embeddings as a rebuildable search index. It is designed for local AI-agent workflows where memory should be readable by humans, reviewable with Git history, and searchable by meaning.
 
 English | [日本語](#日本語)
@@ -32,6 +34,8 @@ This repository is usable but still young. The current implementation focuses on
 See [docs/design.md](docs/design.md) for the design notes and tradeoffs.
 
 ## Architecture
+
+![git-mcp-memory architecture diagram](docs/assets/architecture.svg)
 
 ```text
 AI client / CLI

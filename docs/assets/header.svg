@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420" role="img" aria-labelledby="title desc">
+  <title id="title">git-mcp-memory header illustration</title>
+  <desc id="desc">An AI agent saves readable Markdown memories into Git, while SQLite and vector embeddings provide semantic search through MCP.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#f8fafc"/>
+      <stop offset="0.52" stop-color="#eef6f4"/>
+      <stop offset="1" stop-color="#f6f0e8"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f8fafc"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#0f172a" flood-opacity="0.12"/>
+    </filter>
+    <marker id="arrow" markerWidth="11" markerHeight="11" refX="9" refY="5.5" orient="auto">
+      <path d="M0 0L11 5.5L0 11Z" fill="#334155"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="420" rx="28" fill="url(#bg)"/>
+
+  <g opacity="0.22">
+    <path d="M83 88H286M914 76H1110M838 342H1060M102 336H338" stroke="#64748b" stroke-width="2"/>
+    <circle cx="83" cy="88" r="5" fill="#0f766e"/>
+    <circle cx="286" cy="88" r="5" fill="#0f766e"/>
+    <circle cx="914" cy="76" r="5" fill="#b45309"/>
+    <circle cx="1110" cy="76" r="5" fill="#b45309"/>
+    <circle cx="838" cy="342" r="5" fill="#2563eb"/>
+    <circle cx="1060" cy="342" r="5" fill="#2563eb"/>
+    <circle cx="102" cy="336" r="5" fill="#64748b"/>
+    <circle cx="338" cy="336" r="5" fill="#64748b"/>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="72" y="112" width="250" height="166" rx="18" fill="url(#panel)" stroke="#d6dde6"/>
+    <text x="104" y="152" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="20" font-weight="700" fill="#0f172a">AI agent</text>
+    <text x="104" y="183" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#475569">save_memory</text>
+    <text x="104" y="207" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#475569">search_memory</text>
+    <rect x="104" y="229" width="86" height="24" rx="12" fill="#e0f2fe"/>
+    <text x="121" y="246" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="12" font-weight="700" fill="#0369a1">MCP stdio</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="418" y="76" width="364" height="256" rx="22" fill="#ffffff" stroke="#cbd5e1"/>
+    <text x="462" y="126" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="30" font-weight="800" fill="#0f172a">git-mcp-memory</text>
+    <text x="462" y="158" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#475569">Git-backed memory with local semantic search</text>
+
+    <g transform="translate(462 193)">
+      <rect width="110" height="82" rx="14" fill="#ecfdf5" stroke="#99f6e4"/>
+      <path d="M28 22h38l16 16v28H28Z" fill="#ffffff" stroke="#0f766e" stroke-width="2"/>
+      <path d="M66 22v17h16" fill="none" stroke="#0f766e" stroke-width="2"/>
+      <text x="24" y="106" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="700" fill="#0f766e">Markdown</text>
+    </g>
+
+    <g transform="translate(545 238)">
+      <path d="M0 0c34-26 84-26 118 0" fill="none" stroke="#334155" stroke-width="3"/>
+      <circle cx="0" cy="0" r="8" fill="#f97316"/>
+      <circle cx="59" cy="-17" r="8" fill="#14b8a6"/>
+      <circle cx="118" cy="0" r="8" fill="#2563eb"/>
+    </g>
+
+    <g transform="translate(636 193)">
+      <rect width="102" height="82" rx="14" fill="#eff6ff" stroke="#bfdbfe"/>
+      <ellipse cx="51" cy="25" rx="34" ry="12" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
+      <path d="M17 25v30c0 7 15 13 34 13s34-6 34-13V25" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
+      <path d="M17 40c0 7 15 13 34 13s34-6 34-13" fill="none" stroke="#2563eb" stroke-width="2"/>
+      <text x="10" y="106" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8">SQLite + vectors</text>
+    </g>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="880" y="112" width="248" height="166" rx="18" fill="url(#panel)" stroke="#d6dde6"/>
+    <text x="916" y="152" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="20" font-weight="700" fill="#0f172a">Memory Git repo</text>
+    <path d="M922 194h44m0 0v-23m0 23v23m0-23h58m0 0v-23m0 23v23" fill="none" stroke="#0f766e" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="922" cy="194" r="8" fill="#0f766e"/>
+    <circle cx="966" cy="171" r="8" fill="#f97316"/>
+    <circle cx="966" cy="217" r="8" fill="#2563eb"/>
+    <circle cx="1024" cy="171" r="8" fill="#0f766e"/>
+    <circle cx="1024" cy="217" r="8" fill="#64748b"/>
+    <text x="916" y="252" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#475569">append-only Markdown history</text>
+  </g>
+
+  <path d="M326 195H403" stroke="#334155" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M786 195H865" stroke="#334155" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M870 236C777 373 428 373 330 236" fill="none" stroke="#64748b" stroke-width="2.5" stroke-dasharray="8 8" marker-end="url(#arrow)"/>
+
+  <text x="600" y="382" text-anchor="middle" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="17" font-weight="700" fill="#334155">Human-readable Git history + local semantic search</text>
+</svg>
