@@ -97,24 +97,39 @@ The embedding provider is currently fixed to:
 
 ## Installation
 
-From source:
+Download a prebuilt archive from the latest GitHub Release.
+
+macOS arm64:
 
 ```bash
-go build -ldflags '-s -w' -o ~/.local/bin/git-mcp-memory ./cmd/git-mcp-memory
+curl -L -O https://github.com/tomohiro-owada/gmem/releases/latest/download/git-mcp-memory-darwin-arm64.tar.gz
+tar -xzf git-mcp-memory-darwin-arm64.tar.gz
+mkdir -p ~/.local/bin
+mv git-mcp-memory-darwin-arm64 ~/.local/bin/git-mcp-memory
+chmod +x ~/.local/bin/git-mcp-memory
 ```
 
-Verify:
+Linux amd64:
+
+```bash
+curl -L -O https://github.com/tomohiro-owada/gmem/releases/latest/download/git-mcp-memory-linux-amd64.tar.gz
+tar -xzf git-mcp-memory-linux-amd64.tar.gz
+mkdir -p ~/.local/bin
+mv git-mcp-memory-linux-amd64 ~/.local/bin/git-mcp-memory
+chmod +x ~/.local/bin/git-mcp-memory
+```
+
+Verify the install:
 
 ```bash
 git-mcp-memory schema --output json
 ```
 
-Prebuilt binaries are published from GitHub Releases for:
+Release artifacts include a `.tar.gz` archive and a `.sha256` checksum file. Source builds are still supported:
 
-- Linux amd64
-- macOS arm64
-
-Release artifacts include a `.tar.gz` archive and a `.sha256` checksum file.
+```bash
+go build -ldflags '-s -w' -o ~/.local/bin/git-mcp-memory ./cmd/git-mcp-memory
+```
 
 ## Configuration
 
@@ -242,6 +257,19 @@ Check status:
 ```bash
 git-mcp-memory status --output json
 ```
+
+On a fresh machine, `assets_ready` is usually `false` until the first embedding model setup completes. The first `save`, `search`, or `sync` command downloads the ONNX model, tokenizer, and ONNX Runtime into the local application data directory, so it can take longer than normal. Agents can check these fields before a real operation:
+
+```json
+{
+  "assets_ready": false,
+  "embedding_model_ready": false,
+  "tokenizer_ready": false,
+  "onnx_runtime_ready": false
+}
+```
+
+After the files are cached, the same fields become `true` and later operations do not download them again.
 
 Save a memory:
 
@@ -387,8 +415,8 @@ CI runs on pushes and pull requests to `main`.
 Releases are created by pushing a `v*` tag:
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag vX.Y.Z
+git push origin vX.Y.Z
 ```
 
 The release workflow builds native artifacts on GitHub-hosted Linux and macOS runners, uploads checksums, and publishes a GitHub Release.
@@ -477,10 +505,26 @@ memory-repo/
 
 ## インストール
 
-source から build:
+最新の GitHub Release から build 済み archive を取得します。
+
+macOS arm64:
 
 ```bash
-go build -ldflags '-s -w' -o ~/.local/bin/git-mcp-memory ./cmd/git-mcp-memory
+curl -L -O https://github.com/tomohiro-owada/gmem/releases/latest/download/git-mcp-memory-darwin-arm64.tar.gz
+tar -xzf git-mcp-memory-darwin-arm64.tar.gz
+mkdir -p ~/.local/bin
+mv git-mcp-memory-darwin-arm64 ~/.local/bin/git-mcp-memory
+chmod +x ~/.local/bin/git-mcp-memory
+```
+
+Linux amd64:
+
+```bash
+curl -L -O https://github.com/tomohiro-owada/gmem/releases/latest/download/git-mcp-memory-linux-amd64.tar.gz
+tar -xzf git-mcp-memory-linux-amd64.tar.gz
+mkdir -p ~/.local/bin
+mv git-mcp-memory-linux-amd64 ~/.local/bin/git-mcp-memory
+chmod +x ~/.local/bin/git-mcp-memory
 ```
 
 確認:
@@ -489,12 +533,11 @@ go build -ldflags '-s -w' -o ~/.local/bin/git-mcp-memory ./cmd/git-mcp-memory
 git-mcp-memory schema --output json
 ```
 
-GitHub Releases では以下の build 済み binary を公開します。
+release artifact には `.tar.gz` archive と `.sha256` checksum を含めます。source からの build も可能です。
 
-- Linux amd64
-- macOS arm64
-
-release artifact には `.tar.gz` archive と `.sha256` checksum を含めます。
+```bash
+go build -ldflags '-s -w' -o ~/.local/bin/git-mcp-memory ./cmd/git-mcp-memory
+```
 
 ## 設定
 
@@ -579,6 +622,19 @@ status:
 ```bash
 git-mcp-memory status --output json
 ```
+
+初回利用前は、たいてい `assets_ready` が `false` です。最初の `save`、`search`、`sync` で ONNX model、tokenizer、ONNX Runtime を local application data directory へダウンロードするため、通常より時間がかかります。AI agent は本番操作の前に次の field を見れば、初回 setup 中かどうかを判断できます。
+
+```json
+{
+  "assets_ready": false,
+  "embedding_model_ready": false,
+  "tokenizer_ready": false,
+  "onnx_runtime_ready": false
+}
+```
+
+cache 済みになるとこれらは `true` になり、以降の操作では再ダウンロードしません。
 
 保存:
 
@@ -705,8 +761,8 @@ CI は `main` への push と pull request で実行されます。
 release は `v*` tag を push すると作成されます。
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag vX.Y.Z
+git push origin vX.Y.Z
 ```
 
 release workflow は GitHub-hosted Linux/macOS runner で native artifact を build し、checksum と一緒に GitHub Release へ公開します。

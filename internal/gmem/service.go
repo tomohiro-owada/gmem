@@ -199,6 +199,9 @@ func (s *Service) Status(ctx context.Context) Response[StatusResult] {
 		indexed, _ = s.Index.Count(ctx)
 		failed, _ = s.Index.FailedEmbeddingCount(ctx)
 	}
+	modelReady := fileExists(s.Config.EmbeddingModelPath)
+	tokenizerReady := fileExists(s.Config.EmbeddingTokenizerPath)
+	runtimeReady := fileExists(s.Config.ONNXRuntimePath)
 	return OK(StatusResult{
 		GitDir:               s.Config.GitDir,
 		RemoteURL:            s.Config.RemoteURL,
@@ -212,7 +215,21 @@ func (s *Service) Status(ctx context.Context) Response[StatusResult] {
 		EmbeddingModel:       s.Config.EmbeddingModel,
 		EmbeddingModelRepo:   s.Config.EmbeddingModelRepo,
 		EmbeddingModelPath:   s.Config.EmbeddingModelPath,
+		EmbeddingModelReady:  modelReady,
+		TokenizerPath:        s.Config.EmbeddingTokenizerPath,
+		TokenizerReady:       tokenizerReady,
+		ONNXRuntimePath:      s.Config.ONNXRuntimePath,
+		ONNXRuntimeReady:     runtimeReady,
+		AssetsReady:          modelReady && tokenizerReady && runtimeReady,
 	})
+}
+
+func fileExists(path string) bool {
+	if path == "" {
+		return false
+	}
+	info, err := os.Stat(path)
+	return err == nil && !info.IsDir()
 }
 
 func (s *Service) RetryPush(ctx context.Context, req RetryPushRequest) Response[RetryPushResult] {

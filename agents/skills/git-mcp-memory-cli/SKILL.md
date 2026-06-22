@@ -103,6 +103,10 @@ Use `status --output json` before or after risky operations. Important fields:
 - `dirty_working_tree`
 - `indexed_document_count`
 - `failed_embedding_count`
+- `assets_ready`
+- `embedding_model_ready`
+- `tokenizer_ready`
+- `onnx_runtime_ready`
 
 The healthy baseline is:
 
@@ -110,9 +114,12 @@ The healthy baseline is:
 {
   "unpushed_commit_count": 0,
   "dirty_working_tree": false,
-  "failed_embedding_count": 0
+  "failed_embedding_count": 0,
+  "assets_ready": true
 }
 ```
+
+On first use, `assets_ready` may be `false` because the command has not downloaded the ONNX model, tokenizer, and ONNX Runtime yet. Treat the first `save`, `search`, or `sync` as a setup operation that can take longer than usual, and surface download errors instead of retrying blindly.
 
 ## Expected Failure Behavior
 

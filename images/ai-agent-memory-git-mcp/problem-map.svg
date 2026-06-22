@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">AI agent memory problems and the git-mcp-memory approach</title>
+  <desc id="desc">A diagram showing that vector-only memory is hard to inspect and Markdown-only memory is hard to search, while git-mcp-memory keeps readable Markdown in Git and uses SQLite vectors as a search cache.</desc>
+  <defs>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#0f172a" flood-opacity="0.12"/>
+    </filter>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0 0L12 6L0 12Z" fill="#334155"/>
+    </marker>
+    <style>
+      .title { font: 800 32px Inter, ui-sans-serif, system-ui, sans-serif; fill: #0f172a; }
+      .h { font: 700 22px Inter, ui-sans-serif, system-ui, sans-serif; fill: #0f172a; }
+      .body { font: 16px Inter, ui-sans-serif, system-ui, sans-serif; fill: #475569; }
+      .small { font: 13px Inter, ui-sans-serif, system-ui, sans-serif; fill: #64748b; }
+      .mono { font: 14px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #334155; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="630" rx="28" fill="#f8fafc"/>
+  <text x="600" y="64" text-anchor="middle" class="title">AIエージェントの記憶をブラックボックスにしない</text>
+  <text x="600" y="98" text-anchor="middle" class="body">読める正本は Git に置き、検索だけを SQLite + vector に任せる</text>
+
+  <g filter="url(#shadow)">
+    <rect x="70" y="150" width="295" height="260" rx="22" fill="#fff7ed" stroke="#fdba74"/>
+    <text x="112" y="198" class="h">Vector DB だけ</text>
+    <text x="112" y="235" class="body">意味検索は強い</text>
+    <text x="112" y="266" class="body">でも中身が追いにくい</text>
+    <text x="112" y="297" class="body">差分も履歴も見えづらい</text>
+    <rect x="112" y="332" width="182" height="38" rx="19" fill="#ffedd5"/>
+    <text x="134" y="356" class="mono">inspect がつらい</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="835" y="150" width="295" height="260" rx="22" fill="#eff6ff" stroke="#93c5fd"/>
+    <text x="877" y="198" class="h">Markdown だけ</text>
+    <text x="877" y="235" class="body">人間には読みやすい</text>
+    <text x="877" y="266" class="body">履歴も Git で追える</text>
+    <text x="877" y="297" class="body">でも曖昧検索が弱い</text>
+    <rect x="877" y="332" width="194" height="38" rx="19" fill="#dbeafe"/>
+    <text x="899" y="356" class="mono">search がつらい</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="420" y="190" width="360" height="322" rx="26" fill="#ffffff" stroke="#cbd5e1"/>
+    <text x="468" y="238" class="h">git-mcp-memory</text>
+    <text x="468" y="274" class="body">正本は Markdown</text>
+    <text x="468" y="305" class="body">履歴・差分・復旧は Git</text>
+    <text x="468" y="336" class="body">検索 cache は SQLite</text>
+    <text x="468" y="367" class="body">embedding はローカル ONNX</text>
+
+    <rect x="468" y="405" width="110" height="48" rx="12" fill="#ecfdf5" stroke="#99f6e4"/>
+    <text x="492" y="435" class="mono">読める</text>
+    <rect x="602" y="405" width="110" height="48" rx="12" fill="#f1f5f9" stroke="#cbd5e1"/>
+    <text x="626" y="435" class="mono">探せる</text>
+  </g>
+
+  <path d="M365 280H406" stroke="#334155" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M835 280H794" stroke="#334155" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <text x="600" y="570" text-anchor="middle" class="small">記憶を「便利だけど見えないもの」から「検索できるドキュメント」に戻す</text>
+</svg>

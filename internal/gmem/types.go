@@ -146,4 +146,10 @@ type StatusResult struct {
 	EmbeddingModel       string `json:"embedding_model"`
 	EmbeddingModelRepo   string `json:"embedding_model_repo"`
 	EmbeddingModelPath   string `json:"embedding_model_path"`
+	EmbeddingModelReady  bool   `json:"embedding_model_ready"`
+	TokenizerPath        string `json:"tokenizer_path"`
+	TokenizerReady       bool   `json:"tokenizer_ready"`
+	ONNXRuntimePath      string `json:"onnx_runtime_path"`
+	ONNXRuntimeReady     bool   `json:"onnx_runtime_ready"`
+	AssetsReady          bool   `json:"assets_ready"`
 }
