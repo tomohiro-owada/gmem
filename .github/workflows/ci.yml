@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Test
+        run: go test ./...
+
+  build:
+    name: Build (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-amd64
+            os: ubuntu-latest
+            artifact: git-mcp-memory-linux-amd64
+          - name: darwin-amd64
+            os: macos-13
+            artifact: git-mcp-memory-darwin-amd64
+          - name: darwin-arm64
+            os: macos-14
+            artifact: git-mcp-memory-darwin-arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build
+        run: go build -ldflags "-s -w" -o "${{ matrix.artifact }}" ./cmd/git-mcp-memory
+
+      - name: Verify binary
+        run: ./"${{ matrix.artifact }}" schema --output json
+

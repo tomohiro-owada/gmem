@@ -1,0 +1,4 @@
+interface:
+  display_name: "Git MCP Memory CLI"
+  short_description: "Use git-mcp-memory safely from the CLI."
+  default_prompt: "Use git-mcp-memory CLI to save, search, sync, or recover Git-backed AI memories."

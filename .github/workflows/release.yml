@@ -1,0 +1,98 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, for example v0.1.0"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build release artifact (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-amd64
+            os: ubuntu-latest
+            artifact: git-mcp-memory-linux-amd64
+            archive: git-mcp-memory-linux-amd64.tar.gz
+          - name: darwin-amd64
+            os: macos-13
+            artifact: git-mcp-memory-darwin-amd64
+            archive: git-mcp-memory-darwin-amd64.tar.gz
+          - name: darwin-arm64
+            os: macos-14
+            artifact: git-mcp-memory-darwin-arm64
+            archive: git-mcp-memory-darwin-arm64.tar.gz
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build
+        run: go build -ldflags "-s -w" -o "${{ matrix.artifact }}" ./cmd/git-mcp-memory
+
+      - name: Verify binary
+        run: ./"${{ matrix.artifact }}" schema --output json
+
+      - name: Package
+        run: |
+          mkdir -p dist
+          tar -czf "dist/${{ matrix.archive }}" "${{ matrix.artifact }}" README.md LICENSE 2>/dev/null || tar -czf "dist/${{ matrix.archive }}" "${{ matrix.artifact }}" README.md
+          shasum -a 256 "dist/${{ matrix.archive }}" > "dist/${{ matrix.archive }}.sha256"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 && release_exists=1 || release_exists=0
+          if [ "$release_exists" -eq 1 ]; then
+            gh release upload "$TAG" dist/* --clobber
+          else
+            gh release create "$TAG" dist/* --title "$TAG" --generate-notes
+          fi
+

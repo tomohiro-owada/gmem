@@ -108,6 +108,14 @@ Verify:
 git-mcp-memory schema --output json
 ```
 
+Prebuilt binaries are published from GitHub Releases for:
+
+- Linux amd64
+- macOS amd64
+- macOS arm64
+
+Release artifacts include a `.tar.gz` archive and a `.sha256` checksum file.
+
 ## Configuration
 
 Create a JSON config file at the default location for your OS.
@@ -289,6 +297,16 @@ Retry failed pushes:
 git-mcp-memory retry-push --output json
 ```
 
+## Agent Skill
+
+This repository includes a Codex-style agent skill for CLI operation:
+
+```text
+agents/skills/git-mcp-memory-cli/
+```
+
+Use it when an agent needs to call `git-mcp-memory` through the CLI rather than through MCP tools. The skill covers JSON-first command usage, dry-run saves, project and cross-project search, status checks, and push-failure recovery.
+
 ## Safety Model
 
 `save_memory` and `save` run a server-side security gate before writing anything.
@@ -361,6 +379,19 @@ git-mcp-memory save \
   --dry-run \
   --output json
 ```
+
+## Release
+
+CI runs on pushes and pull requests to `main`.
+
+Releases are created by pushing a `v*` tag:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The release workflow builds native artifacts on GitHub-hosted Linux and macOS runners, uploads checksums, and publishes a GitHub Release.
 
 ## 日本語
 
@@ -456,6 +487,14 @@ go build -ldflags '-s -w' -o ~/.local/bin/git-mcp-memory ./cmd/git-mcp-memory
 ```bash
 git-mcp-memory schema --output json
 ```
+
+GitHub Releases では以下の build 済み binary を公開します。
+
+- Linux amd64
+- macOS amd64
+- macOS arm64
+
+release artifact には `.tar.gz` archive と `.sha256` checksum を含めます。
 
 ## 設定
 
@@ -589,6 +628,16 @@ push 再試行:
 git-mcp-memory retry-push --output json
 ```
 
+## Agent Skill
+
+この repository には CLI 操作用の Codex-style agent skill を同梱しています。
+
+```text
+agents/skills/git-mcp-memory-cli/
+```
+
+MCP tool ではなく CLI から `git-mcp-memory` を使う agent 向けです。JSON-first な command 利用、dry-run 保存、project 検索、全 project 横断検索、status 確認、push 失敗時の復旧手順を含みます。
+
 ## セキュリティ
 
 `save_memory` と `save` は保存前に server-side の safety gate を通します。
@@ -648,3 +697,16 @@ git-mcp-memory save \
   --dry-run \
   --output json
 ```
+
+## Release
+
+CI は `main` への push と pull request で実行されます。
+
+release は `v*` tag を push すると作成されます。
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+release workflow は GitHub-hosted Linux/macOS runner で native artifact を build し、checksum と一緒に GitHub Release へ公開します。
