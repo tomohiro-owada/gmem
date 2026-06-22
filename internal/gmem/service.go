@@ -145,6 +145,9 @@ func (s *Service) Search(ctx context.Context, req SearchRequest) Response[Search
 	if err != nil {
 		return Fail[SearchData]("index_failed", err.Error(), "", nil)
 	}
+	if results == nil {
+		results = []SearchResult{}
+	}
 	return OK(SearchData{Results: results}, warnings...)
 }
 
@@ -182,6 +185,12 @@ func (s *Service) Resync(ctx context.Context) error {
 		return nil
 	}
 	root := filepath.Join(s.Config.GitDir, "projects")
+	if _, err := os.Stat(root); err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
 	return filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 		if err != nil || d == nil || d.IsDir() || filepath.Ext(path) != ".md" {
 			return err

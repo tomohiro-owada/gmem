@@ -31,6 +31,9 @@ func (g GitRepo) Ensure(ctx context.Context) error {
 		return errors.New("git_dir is required")
 	}
 	if _, err := os.Stat(filepath.Join(g.Dir, ".git")); err == nil {
+		if g.RemoteURL != "" {
+			_ = g.ensureRemote(ctx)
+		}
 		return nil
 	}
 	if g.RemoteURL == "" {
@@ -48,6 +51,9 @@ func (g GitRepo) Ensure(ctx context.Context) error {
 }
 
 func (g GitRepo) PullRebase(ctx context.Context) error {
+	if !g.hasUpstream(ctx) {
+		return nil
+	}
 	_, err := g.run(ctx, "git", "pull", "--rebase")
 	return err
 }
@@ -63,6 +69,10 @@ func (g GitRepo) AddCommit(ctx context.Context, path, message string) (string, e
 }
 
 func (g GitRepo) Push(ctx context.Context) error {
+	if !g.hasUpstream(ctx) {
+		_, err := g.run(ctx, "git", "push", "-u", "origin", "main")
+		return err
+	}
 	_, err := g.run(ctx, "git", "push")
 	return err
 }
@@ -102,6 +112,26 @@ func (g GitRepo) runIn(ctx context.Context, dir, name string, args ...string) (s
 		return out, &GitError{Op: name + " " + strings.Join(args, " "), Category: categorizeGitError(out), Output: out, Err: err}
 	}
 	return out, nil
+}
+
+func (g GitRepo) ensureRemote(ctx context.Context) error {
+	out, err := g.run(ctx, "git", "remote")
+	if err != nil {
+		return err
+	}
+	for _, remote := range strings.Split(out, "\n") {
+		if strings.TrimSpace(remote) == "origin" {
+			_, err := g.run(ctx, "git", "remote", "set-url", "origin", g.RemoteURL)
+			return err
+		}
+	}
+	_, err = g.run(ctx, "git", "remote", "add", "origin", g.RemoteURL)
+	return err
+}
+
+func (g GitRepo) hasUpstream(ctx context.Context) bool {
+	_, err := g.run(ctx, "git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}")
+	return err == nil
 }
 
 func categorizeGitError(out string) string {

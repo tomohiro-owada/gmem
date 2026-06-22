@@ -144,7 +144,7 @@ func extractTarGzMember(archivePath, member, dest string) error {
 		if err != nil {
 			return err
 		}
-		if h.Name == member {
+		if archiveMemberMatches(h.Name, member) {
 			return writeExtracted(dest, tr)
 		}
 	}
@@ -157,7 +157,7 @@ func extractZipMember(archivePath, member, dest string) error {
 	}
 	defer zr.Close()
 	for _, f := range zr.File {
-		if f.Name != member {
+		if !archiveMemberMatches(f.Name, member) {
 			continue
 		}
 		rc, err := f.Open()
@@ -168,6 +168,10 @@ func extractZipMember(archivePath, member, dest string) error {
 		return writeExtracted(dest, rc)
 	}
 	return fmt.Errorf("member not found: %s", member)
+}
+
+func archiveMemberMatches(got, want string) bool {
+	return strings.TrimPrefix(got, "./") == strings.TrimPrefix(want, "./")
 }
 
 func writeExtracted(dest string, r io.Reader) error {
