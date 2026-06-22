@@ -23,10 +23,11 @@ English | [日本語](#日本語)
 
 ## Status
 
-This repository is usable but still young. The current implementation focuses on a local, single-user workflow:
+This repository is usable but still young. The workflow is optimized for local personal use, but it is designed to tolerate multiple users or multiple machines sharing the same memory repository:
 
 - one main branch in the memory repository
 - append-only memory files
+- `git pull --rebase` before writes and retry-push recovery after push failures
 - local SQLite index
 - local ONNX embedding model
 - MCP stdio transport
@@ -419,10 +420,11 @@ AI agent の長期記憶を Git 管理された Markdown として保存し、MC
 
 ## 現在の位置づけ
 
-この repository は利用可能ですが、まだ若い実装です。現在はローカル単一ユーザー利用を主対象にしています。
+この repository は利用可能ですが、まだ若い実装です。ローカル個人利用に最適化していますが、同じ memory repository を複数人または複数端末で共有する運用にも耐える設計です。
 
 - memory repository は `main` branch を直線的に使う
 - 記憶ファイルは append-only
+- 書き込み前に `git pull --rebase` し、push 失敗時は `retry-push` で復旧する
 - SQLite は local index
 - embedding は local ONNX model
 - MCP transport は stdio
