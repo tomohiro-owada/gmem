@@ -85,9 +85,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.tag.outputs.tag }}
         run: |
-          gh release view "$TAG" >/dev/null 2>&1 && release_exists=1 || release_exists=0
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 && release_exists=1 || release_exists=0
           if [ "$release_exists" -eq 1 ]; then
-            gh release upload "$TAG" dist/* --clobber
+            gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber
           else
-            gh release create "$TAG" dist/* --title "$TAG" --generate-notes
+            gh release create "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --title "$TAG" --generate-notes
           fi
