@@ -145,10 +145,74 @@ func (s *Service) Search(ctx context.Context, req SearchRequest) Response[Search
 	if err != nil {
 		return Fail[SearchData]("index_failed", err.Error(), "", nil)
 	}
+	results = applySearchOptions(results, req)
 	if results == nil {
 		results = []SearchResult{}
 	}
 	return OK(SearchData{Results: results}, warnings...)
+}
+
+func (s *Service) Sync(ctx context.Context) Response[SyncResult] {
+	if err := s.Repo.Ensure(ctx); err != nil {
+		return Fail[SyncResult]("git_failed", err.Error(), "", nil)
+	}
+	var warnings []Warning
+	if commits, _ := s.Repo.Unpushed(ctx); len(commits) > 0 {
+		r := s.RetryPush(ctx, RetryPushRequest{})
+		if !r.OK || !r.Data.Pushed {
+			warnings = append(warnings, Warning{
+				Code:    "sync_failed_local_state",
+				Message: "retry push failed; sync continued from local repository state",
+				Details: map[string]any{
+					"unpushed_commit_count": len(commits),
+					"recommended_action":    "retry_push",
+				},
+			})
+		}
+	}
+	if len(warnings) == 0 {
+		if err := s.Repo.PullRebase(ctx); err != nil {
+			warnings = append(warnings, Warning{Code: "pull_failed_local_state", Message: "pull failed; sync continued from local repository state", Details: gitDetails(err)})
+		}
+	}
+	if err := s.Resync(ctx); err != nil {
+		return Fail[SyncResult]("index_failed", err.Error(), "", nil)
+	}
+	count, err := s.Index.Count(ctx)
+	if err != nil {
+		return Fail[SyncResult]("index_failed", err.Error(), "", nil)
+	}
+	commits, _ := s.Repo.Unpushed(ctx)
+	return OK(SyncResult{IndexedDocumentCount: count, UnpushedCommitCount: len(commits)}, warnings...)
+}
+
+func (s *Service) Status(ctx context.Context) Response[StatusResult] {
+	if err := s.Repo.Ensure(ctx); err != nil {
+		return Fail[StatusResult]("git_failed", err.Error(), "", nil)
+	}
+	branch, _ := s.Repo.CurrentBranch(ctx)
+	dirty, _ := s.Repo.Dirty(ctx)
+	commits, _ := s.Repo.Unpushed(ctx)
+	indexed := 0
+	failed := 0
+	if s.Index != nil {
+		indexed, _ = s.Index.Count(ctx)
+		failed, _ = s.Index.FailedEmbeddingCount(ctx)
+	}
+	return OK(StatusResult{
+		GitDir:               s.Config.GitDir,
+		RemoteURL:            s.Config.RemoteURL,
+		CurrentBranch:        branch,
+		UnpushedCommitCount:  len(commits),
+		DirtyWorkingTree:     dirty,
+		IndexPath:            s.Config.IndexPath,
+		IndexedDocumentCount: indexed,
+		FailedEmbeddingCount: failed,
+		EmbeddingProvider:    s.Config.EmbeddingProvider,
+		EmbeddingModel:       s.Config.EmbeddingModel,
+		EmbeddingModelRepo:   s.Config.EmbeddingModelRepo,
+		EmbeddingModelPath:   s.Config.EmbeddingModelPath,
+	})
 }
 
 func (s *Service) RetryPush(ctx context.Context, req RetryPushRequest) Response[RetryPushResult] {
@@ -178,6 +242,49 @@ func (s *Service) RetryPush(ctx context.Context, req RetryPushRequest) Response[
 		return OK(RetryPushResult{Pushed: false, UnpushedCommitCount: len(commits), ErrorCategory: category})
 	}
 	return OK(RetryPushResult{Pushed: true, PushedCommitHashes: commits})
+}
+
+func applySearchOptions(results []SearchResult, req SearchRequest) []SearchResult {
+	fields := map[string]bool{}
+	for _, f := range req.Fields {
+		fields[strings.TrimSpace(f)] = true
+	}
+	useFields := len(fields) > 0
+	for i := range results {
+		if req.SnippetChars > 0 {
+			results[i].Content = truncateRunes(results[i].Content, req.SnippetChars)
+		}
+		if !useFields {
+			continue
+		}
+		score := results[i].Score
+		next := SearchResult{Score: score}
+		if fields["project_id"] {
+			next.ProjectID = results[i].ProjectID
+		}
+		if fields["path"] {
+			next.Path = results[i].Path
+		}
+		if fields["title"] {
+			next.Title = results[i].Title
+		}
+		if fields["content"] {
+			next.Content = results[i].Content
+		}
+		results[i] = next
+	}
+	return results
+}
+
+func truncateRunes(s string, max int) string {
+	if max <= 0 {
+		return s
+	}
+	r := []rune(s)
+	if len(r) <= max {
+		return s
+	}
+	return string(r[:max])
 }
 
 func (s *Service) Resync(ctx context.Context) error {

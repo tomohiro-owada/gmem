@@ -82,6 +82,19 @@ func (g GitRepo) Head(ctx context.Context) (string, error) {
 	return strings.TrimSpace(out), err
 }
 
+func (g GitRepo) CurrentBranch(ctx context.Context) (string, error) {
+	out, err := g.run(ctx, "git", "branch", "--show-current")
+	return strings.TrimSpace(out), err
+}
+
+func (g GitRepo) Dirty(ctx context.Context) (bool, error) {
+	out, err := g.run(ctx, "git", "status", "--porcelain")
+	if err != nil {
+		return false, err
+	}
+	return strings.TrimSpace(out) != "", nil
+}
+
 func (g GitRepo) Unpushed(ctx context.Context) ([]string, error) {
 	out, err := g.run(ctx, "git", "rev-list", "--left-only", "--cherry-pick", "--oneline", "HEAD...@{upstream}")
 	if err != nil {
@@ -120,13 +133,15 @@ func (g GitRepo) run(ctx context.Context, name string, args ...string) (string, 
 func (g GitRepo) runIn(ctx context.Context, dir, name string, args ...string) (string, error) {
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Dir = dir
-	var buf bytes.Buffer
-	cmd.Stdout = &buf
-	cmd.Stderr = &buf
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
 	err := cmd.Run()
-	out := buf.String()
+	out := stdout.String()
 	if err != nil {
-		return out, &GitError{Op: name + " " + strings.Join(args, " "), Category: categorizeGitError(out), Output: out, Err: err}
+		combined := out + stderr.String()
+		return combined, &GitError{Op: name + " " + strings.Join(args, " "), Category: categorizeGitError(combined), Output: combined, Err: err}
 	}
 	return out, nil
 }

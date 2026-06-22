@@ -31,6 +31,8 @@ func run(args []string, stdin io.Reader, stdout io.Writer) error {
 		return runSearch(args[1:], stdin, stdout)
 	case "retry-push":
 		return runRetryPush(args[1:], stdout)
+	case "sync":
+		return runSync(args[1:], stdout)
 	case "status":
 		return runStatus(args[1:], stdout)
 	case "schema":
@@ -97,7 +99,7 @@ func runSave(args []string, stdin io.Reader, stdout io.Writer) error {
 		return err
 	}
 	defer cleanup()
-	return json.NewEncoder(stdout).Encode(svc.Save(context.Background(), req))
+	return writeResponse(stdout, opts["output"], svc.Save(context.Background(), req))
 }
 
 func runSearch(args []string, stdin io.Reader, stdout io.Writer) error {
@@ -130,7 +132,7 @@ func runSearch(args []string, stdin io.Reader, stdout io.Writer) error {
 		return err
 	}
 	defer cleanup()
-	return json.NewEncoder(stdout).Encode(svc.Search(context.Background(), req))
+	return writeSearchResponse(stdout, opts["output"], svc.Search(context.Background(), req))
 }
 
 func runRetryPush(args []string, stdout io.Writer) error {
@@ -143,24 +145,33 @@ func runRetryPush(args []string, stdout io.Writer) error {
 		return err
 	}
 	defer cleanup()
-	return json.NewEncoder(stdout).Encode(svc.RetryPush(context.Background(), gmem.RetryPushRequest{DryRun: opts["dry-run"] == "true"}))
+	return writeResponse(stdout, opts["output"], svc.RetryPush(context.Background(), gmem.RetryPushRequest{DryRun: opts["dry-run"] == "true"}))
 }
 
-func runStatus(args []string, stdout io.Writer) error {
-	cfg, err := gmem.LoadConfig("")
+func runSync(args []string, stdout io.Writer) error {
+	opts, _, err := parseArgs(args)
 	if err != nil {
 		return err
 	}
-	data := map[string]any{
-		"git_dir":    cfg.GitDir,
-		"remote_url": cfg.RemoteURL,
-		"index_path": cfg.IndexPath,
-		"model":      cfg.EmbeddingModel,
-		"model_repo": cfg.EmbeddingModelRepo,
-		"model_path": cfg.EmbeddingModelPath,
-		"provider":   cfg.EmbeddingProvider,
+	svc, cleanup, err := newService(true)
+	if err != nil {
+		return err
 	}
-	return json.NewEncoder(stdout).Encode(gmem.OK(data))
+	defer cleanup()
+	return writeResponse(stdout, opts["output"], svc.Sync(context.Background()))
+}
+
+func runStatus(args []string, stdout io.Writer) error {
+	opts, _, err := parseArgs(args)
+	if err != nil {
+		return err
+	}
+	svc, cleanup, err := newService(false)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+	return writeResponse(stdout, opts["output"], svc.Status(context.Background()))
 }
 
 func runMCP(stdin io.Reader, stdout io.Writer) error {
@@ -261,10 +272,46 @@ func schema() map[string]any {
 	return map[string]any{
 		"tools": map[string]any{
 			"save_memory":   map[string]any{"type": "object", "required": []string{"current_workspace_path", "title", "content"}, "properties": map[string]any{"current_workspace_path": map[string]any{"type": "string"}, "title": map[string]any{"type": "string"}, "content": map[string]any{"type": "string"}, "dry_run": map[string]any{"type": "boolean"}}},
-			"search_memory": map[string]any{"type": "object", "required": []string{"query"}, "properties": map[string]any{"query": map[string]any{"type": "string"}, "current_workspace_path": map[string]any{"type": "string"}, "limit": map[string]any{"type": "integer"}, "all": map[string]any{"type": "boolean"}}},
+			"search_memory": map[string]any{"type": "object", "required": []string{"query"}, "properties": map[string]any{"query": map[string]any{"type": "string"}, "current_workspace_path": map[string]any{"type": "string"}, "limit": map[string]any{"type": "integer"}, "all": map[string]any{"type": "boolean"}, "fields": map[string]any{"type": "array", "items": map[string]any{"type": "string"}}, "snippet_chars": map[string]any{"type": "integer"}}},
 			"retry_push":    map[string]any{"type": "object", "properties": map[string]any{"dry_run": map[string]any{"type": "boolean"}}},
 		},
+		"commands": map[string]any{
+			"save":       map[string]any{"output": []string{"json", "text"}},
+			"search":     map[string]any{"output": []string{"json", "ndjson", "text"}},
+			"sync":       map[string]any{"output": []string{"json", "text"}},
+			"status":     map[string]any{"output": []string{"json", "text"}},
+			"retry-push": map[string]any{"output": []string{"json", "text"}},
+			"schema":     map[string]any{"output": []string{"json"}},
+			"mcp":        map[string]any{"transport": "stdio"},
+		},
 	}
+}
+
+func writeResponse(stdout io.Writer, output string, v any) error {
+	if output == "" || output == "json" {
+		return json.NewEncoder(stdout).Encode(v)
+	}
+	if output != "text" {
+		return fmt.Errorf("unsupported output: %s", output)
+	}
+	b, _ := json.MarshalIndent(v, "", "  ")
+	_, err := fmt.Fprintln(stdout, string(b))
+	return err
+}
+
+func writeSearchResponse(stdout io.Writer, output string, resp gmem.Response[gmem.SearchData]) error {
+	if output == "ndjson" {
+		if !resp.OK {
+			return json.NewEncoder(stdout).Encode(resp)
+		}
+		for _, result := range resp.Data.Results {
+			if err := json.NewEncoder(stdout).Encode(result); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	return writeResponse(stdout, output, resp)
 }
 
 func parseArgs(args []string) (map[string]string, []string, error) {

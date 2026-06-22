@@ -106,9 +106,9 @@ type SearchRequest struct {
 }
 
 type SearchResult struct {
-	ProjectID string  `json:"project_id"`
-	Path      string  `json:"path"`
-	Title     string  `json:"title"`
+	ProjectID string  `json:"project_id,omitempty"`
+	Path      string  `json:"path,omitempty"`
+	Title     string  `json:"title,omitempty"`
 	Content   string  `json:"content,omitempty"`
 	Score     float64 `json:"score"`
 }
@@ -126,4 +126,24 @@ type RetryPushResult struct {
 	UnpushedCommitCount int      `json:"unpushed_commit_count"`
 	PushedCommitHashes  []string `json:"pushed_commit_hashes"`
 	ErrorCategory       string   `json:"error_category,omitempty"`
+}
+
+type SyncResult struct {
+	IndexedDocumentCount int `json:"indexed_document_count"`
+	UnpushedCommitCount  int `json:"unpushed_commit_count"`
+}
+
+type StatusResult struct {
+	GitDir               string `json:"git_dir"`
+	RemoteURL            string `json:"remote_url"`
+	CurrentBranch        string `json:"current_branch,omitempty"`
+	UnpushedCommitCount  int    `json:"unpushed_commit_count"`
+	DirtyWorkingTree     bool   `json:"dirty_working_tree"`
+	IndexPath            string `json:"index_path"`
+	IndexedDocumentCount int    `json:"indexed_document_count"`
+	FailedEmbeddingCount int    `json:"failed_embedding_count"`
+	EmbeddingProvider    string `json:"embedding_provider"`
+	EmbeddingModel       string `json:"embedding_model"`
+	EmbeddingModelRepo   string `json:"embedding_model_repo"`
+	EmbeddingModelPath   string `json:"embedding_model_path"`
 }

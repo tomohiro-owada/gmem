@@ -145,3 +145,15 @@ func (i *Index) Search(ctx context.Context, query []float32, projectID string, l
 	}
 	return results, nil
 }
+
+func (i *Index) Count(ctx context.Context) (int, error) {
+	var count int
+	err := i.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM memories`).Scan(&count)
+	return count, err
+}
+
+func (i *Index) FailedEmbeddingCount(ctx context.Context) (int, error) {
+	var count int
+	err := i.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM memories WHERE embedding_status != 'ready'`).Scan(&count)
+	return count, err
+}
