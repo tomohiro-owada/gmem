@@ -35,9 +35,6 @@ jobs:
           - name: linux-amd64
             os: ubuntu-latest
             artifact: git-mcp-memory-linux-amd64
-          - name: darwin-amd64
-            os: macos-13
-            artifact: git-mcp-memory-darwin-amd64
           - name: darwin-arm64
             os: macos-14
             artifact: git-mcp-memory-darwin-arm64
@@ -57,4 +54,3 @@ jobs:
 
       - name: Verify binary
         run: ./"${{ matrix.artifact }}" schema --output json
-

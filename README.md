@@ -111,7 +111,6 @@ git-mcp-memory schema --output json
 Prebuilt binaries are published from GitHub Releases for:
 
 - Linux amd64
-- macOS amd64
 - macOS arm64
 
 Release artifacts include a `.tar.gz` archive and a `.sha256` checksum file.
@@ -491,7 +490,6 @@ git-mcp-memory schema --output json
 GitHub Releases では以下の build 済み binary を公開します。
 
 - Linux amd64
-- macOS amd64
 - macOS arm64
 
 release artifact には `.tar.gz` archive と `.sha256` checksum を含めます。

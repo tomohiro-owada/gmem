@@ -24,10 +24,6 @@ jobs:
             os: ubuntu-latest
             artifact: git-mcp-memory-linux-amd64
             archive: git-mcp-memory-linux-amd64.tar.gz
-          - name: darwin-amd64
-            os: macos-13
-            artifact: git-mcp-memory-darwin-amd64
-            archive: git-mcp-memory-darwin-amd64.tar.gz
           - name: darwin-arm64
             os: macos-14
             artifact: git-mcp-memory-darwin-arm64
@@ -95,4 +91,3 @@ jobs:
           else
             gh release create "$TAG" dist/* --title "$TAG" --generate-notes
           fi
-
