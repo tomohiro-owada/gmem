@@ -18,7 +18,7 @@
   </defs>
 
   <rect width="1200" height="630" rx="28" fill="#f8fafc"/>
-  <text x="600" y="64" text-anchor="middle" class="title">AIエージェントの記憶をブラックボックスにしない</text>
+  <text x="600" y="64" text-anchor="middle" class="title">AIに無料で手軽に長期記憶をもたせるツールを作りました</text>
   <text x="600" y="98" text-anchor="middle" class="body">読める正本は Git に置き、検索だけを SQLite + vector に任せる</text>
 
   <g filter="url(#shadow)">
