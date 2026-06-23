@@ -2,7 +2,30 @@
 
 Git-backed long-term memory for AI agents, served through MCP and a JSON-first CLI.
 
-![git-mcp-memory header illustration](docs/assets/header.svg)
+<p align="center">
+  <img src="docs/assets/header.svg" alt="git-mcp-memory header illustration" width="100%">
+</p>
+
+<p align="center">
+  <a href="https://github.com/tomohiro-owada/gmem/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/tomohiro-owada/gmem/ci.yml?branch=main&style=flat-square&label=ci"></a>
+  <a href="https://github.com/tomohiro-owada/gmem/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/tomohiro-owada/gmem?style=flat-square"></a>
+  <img alt="Go" src="https://img.shields.io/badge/go-1.24%2B-00ADD8?style=flat-square&logo=go&logoColor=white">
+  <img alt="MCP" src="https://img.shields.io/badge/MCP-stdio-0f766e?style=flat-square">
+  <img alt="Embeddings" src="https://img.shields.io/badge/embeddings-local%20ONNX-2563eb?style=flat-square">
+  <img alt="Storage" src="https://img.shields.io/badge/source%20of%20truth-Git%20Markdown-f97316?style=flat-square">
+</p>
+
+<p align="center">
+  <a href="#installation">Installation</a>
+  ·
+  <a href="#mcp-usage">MCP Usage</a>
+  ·
+  <a href="#cli-usage">CLI Usage</a>
+  ·
+  <a href="docs/design.md">Design Notes</a>
+  ·
+  <a href="#日本語">日本語</a>
+</p>
 
 `git-mcp-memory` stores the source of truth as Markdown files in a Git repository, while using SQLite and local embeddings as a rebuildable search index. It is designed for local AI-agent workflows where memory should be readable by humans, reviewable with Git history, and searchable by meaning.
 

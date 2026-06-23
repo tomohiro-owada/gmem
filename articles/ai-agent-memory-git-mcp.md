@@ -16,6 +16,8 @@ AIエージェントに長く作業させていると、地味だけどかなり
 
 そこで作ったのが `git-mcp-memory` です。
 
+リポジトリはこちらです。READMEにインストール手順、MCP設定、CLI usageを書いています。
+
 https://github.com/tomohiro-owada/gmem
 
 この記事では「何を作ったか」よりも、「何に困っていて、何を解決したかったのか」を中心に書きます。
@@ -306,3 +308,7 @@ AIエージェントの記憶を、AIだけのものにしない。
 人間が読めて、Gitで追えて、AIが探せる形にする。
 
 そのための小さな道具です。
+
+リポジトリはこちらです。ReleaseからmacOS arm64 / Linux amd64のバイナリを取れます。
+
+https://github.com/tomohiro-owada/gmem
