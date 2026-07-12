@@ -59,7 +59,11 @@ func newService(ensureAssets bool) (*gmem.Service, func(), error) {
 		return nil, nil, err
 	}
 	emb := &gmem.E5Embedder{Config: cfg}
-	return gmem.NewService(cfg, idx, emb), func() { _ = idx.Close() }, nil
+	cleanup := func() {
+		_ = idx.Close()
+		_ = emb.Close()
+	}
+	return gmem.NewService(cfg, idx, emb), cleanup, nil
 }
 
 func runSave(args []string, stdin io.Reader, stdout io.Writer) error {
@@ -175,6 +179,14 @@ func runStatus(args []string, stdout io.Writer) error {
 }
 
 func runMCP(stdin io.Reader, stdout io.Writer) error {
+	// Build the service (and its native ONNX session) once for the lifetime of
+	// the process. The MCP transport is a long-running loop, so creating a new
+	// service per request would leak one ONNX inference session on every call.
+	svc, cleanup, err := newService(true)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
 	scanner := bufio.NewScanner(stdin)
 	writer := bufio.NewWriter(stdout)
 	defer writer.Flush()
@@ -184,7 +196,7 @@ func runMCP(stdin io.Reader, stdout io.Writer) error {
 		if err := json.Unmarshal(line, &req); err != nil {
 			continue
 		}
-		resp := handleRPC(req)
+		resp := handleRPC(svc, req)
 		b, _ := json.Marshal(resp)
 		_, _ = writer.Write(b)
 		_ = writer.WriteByte('\n')
@@ -207,14 +219,14 @@ type rpcResponse struct {
 	Error   map[string]any `json:"error,omitempty"`
 }
 
-func handleRPC(req rpcRequest) rpcResponse {
+func handleRPC(svc *gmem.Service, req rpcRequest) rpcResponse {
 	switch req.Method {
 	case "initialize":
 		return rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{"protocolVersion": "2024-11-05", "serverInfo": map[string]any{"name": "git-mcp-memory", "version": "0.1.0"}, "capabilities": map[string]any{"tools": map[string]any{}}}}
 	case "tools/list":
 		return rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{"tools": mcpTools()}}
 	case "tools/call":
-		return rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: callTool(req.Params)}
+		return rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: callTool(svc, req.Params)}
 	default:
 		if req.ID == nil {
 			return rpcResponse{}
@@ -223,7 +235,7 @@ func handleRPC(req rpcRequest) rpcResponse {
 	}
 }
 
-func callTool(raw json.RawMessage) any {
+func callTool(svc *gmem.Service, raw json.RawMessage) any {
 	var in struct {
 		Name      string          `json:"name"`
 		Arguments json.RawMessage `json:"arguments"`
@@ -231,12 +243,6 @@ func callTool(raw json.RawMessage) any {
 	if err := json.Unmarshal(raw, &in); err != nil {
 		return toolText(gmem.Fail[any]("invalid_request", err.Error(), "", nil))
 	}
-	ensure := in.Name == "save_memory" || in.Name == "search_memory"
-	svc, cleanup, err := newService(ensure)
-	if err != nil {
-		return toolText(gmem.Fail[any]("server_error", err.Error(), "", nil))
-	}
-	defer cleanup()
 	switch in.Name {
 	case "save_memory":
 		var req gmem.SaveRequest

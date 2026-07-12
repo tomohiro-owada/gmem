@@ -33,6 +33,20 @@ func (e *E5Embedder) Ready(ctx context.Context) error {
 	return e.ensureLoaded()
 }
 
+// Close releases the native ONNX inference session. It is safe to call
+// multiple times and on an embedder that was never loaded.
+func (e *E5Embedder) Close() error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	var err error
+	if e.session != nil {
+		err = e.session.Destroy()
+		e.session = nil
+	}
+	e.loaded = false
+	return err
+}
+
 func (e *E5Embedder) Embed(ctx context.Context, input string) ([]float32, error) {
 	if err := e.ensureLoaded(); err != nil {
 		return nil, err
