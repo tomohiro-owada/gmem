@@ -2,14 +2,15 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/tomohiro-owada/gmem/internal/gmem"
 )
@@ -182,27 +183,22 @@ func runStatus(args []string, stdout io.Writer) error {
 }
 
 func runMCP(stdin io.Reader, stdout io.Writer) error {
-	// Build the service (and its native ONNX session) once for the lifetime of
-	// the process. The MCP transport is a long-running loop, so creating a new
-	// service per request would leak one ONNX inference session on every call.
+	// The MCP transport is a long-running loop. The embedding model (~470MB of
+	// native ONNX memory) is expensive to load, and once loaded the OS does not
+	// reclaim it in-process even after the session is destroyed (the C allocator
+	// keeps the pages). To keep an idle MCP process small — instead of N
+	// concurrent sessions each pinning ~600MB — the embedding-heavy tools
+	// (save/search) are delegated to a short-lived child process that loads the
+	// model, does the work, and exits, at which point the OS reclaims all of it.
 	//
-	// Assets are NOT ensured here: EnsureAssets may download the model over
-	// HTTP, and doing so at startup would block the initialize/tools/list
-	// handshake and break asset-independent tools (retry_push) offline. Instead
-	// assets are ensured lazily, once, on the first tool call that needs them.
+	// The parent service here never loads the model; it only serves retry_push
+	// (git-only, no assets), so newService(false) keeps startup asset-free and
+	// offline-safe.
 	svc, cleanup, err := newService(false)
 	if err != nil {
 		return err
 	}
 	defer cleanup()
-	var assetsOnce sync.Once
-	var assetsErr error
-	ensureAssets := func() error {
-		assetsOnce.Do(func() {
-			assetsErr = gmem.EnsureAssets(context.Background(), svc.Config)
-		})
-		return assetsErr
-	}
 	scanner := bufio.NewScanner(stdin)
 	writer := bufio.NewWriter(stdout)
 	defer writer.Flush()
@@ -212,7 +208,7 @@ func runMCP(stdin io.Reader, stdout io.Writer) error {
 		if err := json.Unmarshal(line, &req); err != nil {
 			continue
 		}
-		resp := handleRPC(svc, ensureAssets, req)
+		resp := handleRPC(svc, req)
 		b, _ := json.Marshal(resp)
 		_, _ = writer.Write(b)
 		_ = writer.WriteByte('\n')
@@ -235,14 +231,14 @@ type rpcResponse struct {
 	Error   map[string]any `json:"error,omitempty"`
 }
 
-func handleRPC(svc *gmem.Service, ensureAssets func() error, req rpcRequest) rpcResponse {
+func handleRPC(svc *gmem.Service, req rpcRequest) rpcResponse {
 	switch req.Method {
 	case "initialize":
 		return rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{"protocolVersion": "2024-11-05", "serverInfo": map[string]any{"name": "git-mcp-memory", "version": "0.1.0"}, "capabilities": map[string]any{"tools": map[string]any{}}}}
 	case "tools/list":
 		return rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{"tools": mcpTools()}}
 	case "tools/call":
-		return rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: callTool(svc, ensureAssets, req.Params)}
+		return rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: callTool(svc, req.Params)}
 	default:
 		if req.ID == nil {
 			return rpcResponse{}
@@ -251,7 +247,7 @@ func handleRPC(svc *gmem.Service, ensureAssets func() error, req rpcRequest) rpc
 	}
 }
 
-func callTool(svc *gmem.Service, ensureAssets func() error, raw json.RawMessage) any {
+func callTool(svc *gmem.Service, raw json.RawMessage) any {
 	var in struct {
 		Name      string          `json:"name"`
 		Arguments json.RawMessage `json:"arguments"`
@@ -261,19 +257,11 @@ func callTool(svc *gmem.Service, ensureAssets func() error, raw json.RawMessage)
 	}
 	switch in.Name {
 	case "save_memory":
-		if err := ensureAssets(); err != nil {
-			return toolText(gmem.Fail[any]("server_error", err.Error(), "", nil))
-		}
-		var req gmem.SaveRequest
-		_ = json.Unmarshal(in.Arguments, &req)
-		return toolText(svc.Save(context.Background(), req))
+		// Delegate to a short-lived child so the ~470MB model is reclaimed by
+		// the OS the moment the child exits (see runMCP for why).
+		return runToolViaSubprocess("save", in.Arguments)
 	case "search_memory":
-		if err := ensureAssets(); err != nil {
-			return toolText(gmem.Fail[any]("server_error", err.Error(), "", nil))
-		}
-		var req gmem.SearchRequest
-		_ = json.Unmarshal(in.Arguments, &req)
-		return toolText(svc.Search(context.Background(), req))
+		return runToolViaSubprocess("search", in.Arguments)
 	case "retry_push":
 		var req gmem.RetryPushRequest
 		_ = json.Unmarshal(in.Arguments, &req)
@@ -281,6 +269,38 @@ func callTool(svc *gmem.Service, ensureAssets func() error, raw json.RawMessage)
 	default:
 		return toolText(gmem.Fail[any]("unknown_tool", "unknown tool", "", nil))
 	}
+}
+
+// runToolViaSubprocess executes an embedding-heavy tool (save/search) in a
+// fresh child process using the CLI subcommand of the same binary, forwarding
+// the MCP arguments as the child's JSON stdin and relaying its JSON response.
+// Running in a child guarantees the native model memory is returned to the OS
+// when the child exits, keeping the resident MCP server small while idle.
+func runToolViaSubprocess(sub string, args json.RawMessage) any {
+	exe, err := os.Executable()
+	if err != nil {
+		return toolText(gmem.Fail[any]("server_error", err.Error(), "", nil))
+	}
+	if len(args) == 0 {
+		args = json.RawMessage("{}")
+	}
+	cmd := exec.Command(exe, sub, "--input", "json", "--output", "json")
+	cmd.Stdin = bytes.NewReader(args)
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = os.Stderr
+	runErr := cmd.Run()
+	out := strings.TrimSpace(stdout.String())
+	if out == "" {
+		msg := "embedding subprocess produced no output"
+		if runErr != nil {
+			msg = runErr.Error()
+		}
+		return toolText(gmem.Fail[any]("server_error", msg, "", nil))
+	}
+	// The child already emits the canonical Response JSON; relay it verbatim as
+	// the tool's text content.
+	return map[string]any{"content": []map[string]any{{"type": "text", "text": out}}}
 }
 
 func toolText(v any) map[string]any {
