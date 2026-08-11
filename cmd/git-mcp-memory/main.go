@@ -41,6 +41,8 @@ func run(args []string, stdin io.Reader, stdout io.Writer) error {
 		return json.NewEncoder(stdout).Encode(schema())
 	case "mcp":
 		return runMCP(stdin, stdout)
+	case "http":
+		return runHTTP(args[1:])
 	default:
 		return fmt.Errorf("unknown command: %s", args[0])
 	}
@@ -234,7 +236,7 @@ type rpcResponse struct {
 func handleRPC(svc *gmem.Service, req rpcRequest) rpcResponse {
 	switch req.Method {
 	case "initialize":
-		return rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{"protocolVersion": "2024-11-05", "serverInfo": map[string]any{"name": "git-mcp-memory", "version": "0.1.0"}, "capabilities": map[string]any{"tools": map[string]any{}}}}
+		return rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{"protocolVersion": negotiateProtocolVersion(req.Params), "serverInfo": map[string]any{"name": "git-mcp-memory", "version": "0.1.0"}, "capabilities": map[string]any{"tools": map[string]any{}}}}
 	case "tools/list":
 		return rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{"tools": mcpTools()}}
 	case "tools/call":
@@ -245,6 +247,28 @@ func handleRPC(svc *gmem.Service, req rpcRequest) rpcResponse {
 		}
 		return rpcResponse{JSONRPC: "2.0", ID: req.ID, Error: map[string]any{"code": -32601, "message": "method not found"}}
 	}
+}
+
+// supportedProtocolVersions lists the MCP revisions this server speaks, newest
+// first. Streamable HTTP was introduced in 2025-03-26, so the stdio-era
+// 2024-11-05 alone is not enough once the HTTP transport is in play.
+var supportedProtocolVersions = []string{"2025-06-18", "2025-03-26", "2024-11-05"}
+
+// negotiateProtocolVersion echoes the client's requested revision when this
+// server supports it, and otherwise answers with the newest one it speaks —
+// which is what the spec asks a server to do on a version it cannot match.
+func negotiateProtocolVersion(raw json.RawMessage) string {
+	var in struct {
+		ProtocolVersion string `json:"protocolVersion"`
+	}
+	if err := json.Unmarshal(raw, &in); err == nil {
+		for _, v := range supportedProtocolVersions {
+			if in.ProtocolVersion == v {
+				return v
+			}
+		}
+	}
+	return supportedProtocolVersions[0]
 }
 
 func callTool(svc *gmem.Service, raw json.RawMessage) any {
@@ -308,20 +332,99 @@ func toolText(v any) map[string]any {
 	return map[string]any{"content": []map[string]any{{"type": "text", "text": string(b)}}}
 }
 
+// Tool descriptions carry the whole convention for this knowledge base — when to
+// write, what shape the entry takes, and what the server refuses — because a
+// client may have no project instructions telling it any of that.
+const saveMemoryDescription = `Save a decision or a hard-won finding to a git-backed knowledge base, then commit and push it.
+
+WHEN TO CALL THIS — call it on your own, without being asked, as soon as any of these happens:
+- A decision was made: which approach, which tool or library, where a file lives, what will NOT be done.
+  This includes a short approval of your proposal ("yes", "OK", "go ahead") — that is still a decision.
+- A cause that was only found after being stuck, or a workaround that turned out to work.
+- A constraint, requirement, or piece of context that cannot be derived from the code itself.
+Small decisions count. When unsure, save it. Prefer saving at the moment it happens rather than
+batching at the end of a session, where entries get forgotten.
+
+WHEN NOT TO CALL THIS:
+- Facts already recorded in the repository or its git history (code structure, past fixes).
+- Anything that only matters inside the current conversation.
+
+CONTENT FORMAT — Markdown using exactly these headings, in this order:
+
+## 場面
+The situation and context in which the decision was made.
+
+## 決定内容
+What was decided, concretely enough to act on later.
+
+## 選択肢
+The other options that were on the table. Omit this heading entirely if there were none.
+
+## 決定基準・理由
+Why this one was chosen over the others.
+
+## 日付
+YYYY-MM-DD. Resolve relative dates to absolute ones — never write "today" or "last week".
+
+REJECTED CONTENT — the save fails, rather than being redacted, when the title or content holds:
+a private key, an AWS/GitHub/OpenAI/Slack token, an "Authorization: Bearer ..." header, a
+PASSWORD=/SECRET=/TOKEN=/API_KEY=-style line, an email address, or a phone-number-like run of
+digits. Watch for two that are easy to hit by accident: an SSH remote such as
+git@github.com:owner/repo.git matches the email rule (write "the GitHub SSH remote" instead), and
+the literal strings 会社名 / 顧客名 (also 会社: / 顧客:) are refused. On rejection, rephrase the
+offending part and call again — do not silently drop the memory.`
+
+const searchMemoryDescription = `Search saved memories by meaning, not by keyword — a query in one language finds entries written in another, and paraphrases match.
+
+Call this before answering a question about why something is the way it is, before repeating a
+decision that may already have been made, and when picking up work that was left unfinished.
+
+Results are ranked by similarity and each carries a score, title, project, and file path. Searching
+is scoped to the current project by default; pass all=true to search across every project, which is
+what you want when looking for a decision whose project you cannot name.
+
+Entries were written at a point in time and describe what was true then. Before acting on one that
+names a file, function, or flag, check that it still exists.`
+
 func mcpTools() []map[string]any {
 	return []map[string]any{
-		{"name": "save_memory", "description": "Save a memory", "inputSchema": schema()["tools"].(map[string]any)["save_memory"]},
-		{"name": "search_memory", "description": "Search memories", "inputSchema": schema()["tools"].(map[string]any)["search_memory"]},
-		{"name": "retry_push", "description": "Retry pushing local commits", "inputSchema": schema()["tools"].(map[string]any)["retry_push"]},
+		{"name": "save_memory", "description": saveMemoryDescription, "inputSchema": schema()["tools"].(map[string]any)["save_memory"]},
+		{"name": "search_memory", "description": searchMemoryDescription, "inputSchema": schema()["tools"].(map[string]any)["search_memory"]},
+		{"name": "retry_push", "description": "Push memory commits that were committed locally but failed to reach the remote (network loss, or the remote having moved ahead). Call it when a save reported pushed=false, or when a session starts and earlier saves may not have landed.", "inputSchema": schema()["tools"].(map[string]any)["retry_push"]},
 	}
 }
 
 func schema() map[string]any {
 	return map[string]any{
 		"tools": map[string]any{
-			"save_memory":   map[string]any{"type": "object", "required": []string{"current_workspace_path", "title", "content"}, "properties": map[string]any{"current_workspace_path": map[string]any{"type": "string"}, "title": map[string]any{"type": "string"}, "content": map[string]any{"type": "string"}, "dry_run": map[string]any{"type": "boolean"}}},
-			"search_memory": map[string]any{"type": "object", "required": []string{"query"}, "properties": map[string]any{"query": map[string]any{"type": "string"}, "current_workspace_path": map[string]any{"type": "string"}, "limit": map[string]any{"type": "integer"}, "all": map[string]any{"type": "boolean"}, "fields": map[string]any{"type": "array", "items": map[string]any{"type": "string"}}, "snippet_chars": map[string]any{"type": "integer"}}},
-			"retry_push":    map[string]any{"type": "object", "properties": map[string]any{"dry_run": map[string]any{"type": "boolean"}}},
+			"save_memory": map[string]any{
+				"type":     "object",
+				"required": []string{"current_workspace_path", "title", "content"},
+				"properties": map[string]any{
+					"current_workspace_path": map[string]any{"type": "string", "description": "Absolute path of the project this memory belongs to; memories are grouped by it. Use the repository root when inside one, otherwise the working directory."},
+					"title":                  map[string]any{"type": "string", "description": "One line stating what was decided or found — specific enough to recognise later in a list of results. \"Use X because Y\" beats \"about X\"."},
+					"content":                map[string]any{"type": "string", "description": "The memory itself, in the Markdown heading format given in this tool's description (場面 / 決定内容 / 選択肢 / 決定基準・理由 / 日付)."},
+					"dry_run":                map[string]any{"type": "boolean", "description": "Run the security and format checks and report what would be written, without committing or pushing."},
+				},
+			},
+			"search_memory": map[string]any{
+				"type":     "object",
+				"required": []string{"query"},
+				"properties": map[string]any{
+					"query":                  map[string]any{"type": "string", "description": "What you want to know, phrased as the words you would expect in the answer. Matching is semantic, so a natural-language question works better than bare keywords."},
+					"current_workspace_path": map[string]any{"type": "string", "description": "Absolute path of the project to search within. Ignored when all=true."},
+					"limit":                  map[string]any{"type": "integer", "description": "Maximum results to return (default 5)."},
+					"all":                    map[string]any{"type": "boolean", "description": "Search every project instead of only the current one. Use this when the decision you are after may have been recorded under a different project."},
+					"fields":                 map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Restrict the returned fields, e.g. [\"title\",\"path\"] to list candidates cheaply before fetching full content."},
+					"snippet_chars":          map[string]any{"type": "integer", "description": "Truncate each result's content to this many characters. Use a small value to scan many results, or omit for the full text."},
+				},
+			},
+			"retry_push": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"dry_run": map[string]any{"type": "boolean", "description": "Report which commits are unpushed without attempting the push."},
+				},
+			},
 		},
 		"commands": map[string]any{
 			"save":       map[string]any{"output": []string{"json", "text"}},

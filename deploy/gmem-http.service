@@ -1,0 +1,32 @@
+[Unit]
+Description=gmem MCP server (Streamable HTTP)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=gmem
+Group=gmem
+# Config and data paths are derived from HOME ($HOME/.config, $HOME/.local/share),
+# so it must be set explicitly rather than left to the unit's defaults.
+Environment=HOME=/var/lib/gmem
+EnvironmentFile=/etc/gmem/env
+ExecStart=/usr/local/bin/git-mcp-memory http
+Restart=on-failure
+RestartSec=5
+
+# Bound to loopback; Caddy terminates TLS in front of it.
+# save/search fork a child that loads a ~470MB ONNX model, so the memory ceiling
+# has to leave room for the parent plus one child.
+MemoryMax=1500M
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/gmem
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target
