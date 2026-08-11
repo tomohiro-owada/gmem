@@ -9,7 +9,7 @@
 set -euo pipefail
 
 DOMAIN="${GMEM_DOMAIN:?set GMEM_DOMAIN, e.g. GMEM_DOMAIN=gmem.example.com}"
-MEMORY_REMOTE="${GMEM_MEMORY_REMOTE:-git@github.com:tomohiro-owada/gmem-memory.git}"
+MEMORY_REMOTE="${GMEM_MEMORY_REMOTE:?set GMEM_MEMORY_REMOTE to the git remote holding your memories}"
 GIT_USER_NAME="${GMEM_GIT_NAME:-gmem}"
 GIT_USER_EMAIL="${GMEM_GIT_EMAIL:-gmem@${DOMAIN}}"
 GO_VERSION="${GMEM_GO_VERSION:-1.26.3}"
